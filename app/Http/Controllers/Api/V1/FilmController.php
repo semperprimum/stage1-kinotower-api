@@ -39,6 +39,9 @@ class FilmController extends Controller
 
         $query = Film::query();
 
+        // Join the ratings table to get the average rating
+        $query->leftJoin('ratings', 'films.id', '=', 'ratings.film_id')
+            ->select('films.*', \DB::raw('avg(ratings.ball) as rating'));
 
         if ($country) {
             $query->whereHas('country', function ($query) use ($country) {
@@ -52,12 +55,19 @@ class FilmController extends Controller
             });
         }
 
-        $query->orderBy($sortBy, $sortDir);
+        // Use the calculated rating to sort the films
+        if ($sortBy === 'rating') {
+            $query->orderBy('rating', $sortDir);
+        } else {
+            $query->orderBy($sortBy, $sortDir);
+        }
 
-        $films = $query->paginate($size);
+        $films = $query->groupBy('films.id')
+            ->paginate($size);
 
         return new FilmCollection($films);
     }
+
 
     /**
      * Store a newly created resource in storage.
